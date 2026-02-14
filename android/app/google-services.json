@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1021409884080",
+    "project_id": "bahirdar-smart-tax",
+    "storage_bucket": "bahirdar-smart-tax.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1021409884080:android:d4d68d1c0c5f116ad84875",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhXqndmQta21PAaxnjmt_8n_NY96gnuqw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
