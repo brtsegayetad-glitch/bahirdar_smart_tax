@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'receipt_page.dart'; // ደረሰኝ የሚቀበለው ገጽ
 import 'telebirr_service.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AgentPaymentPage extends StatefulWidget {
   const AgentPaymentPage({super.key});
@@ -184,10 +185,11 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
   }
 
   void _submitData() async {
+    final user = FirebaseAuth.instance.currentUser;
+
     if (_formKey.currentState!.validate()) {
       // 1. የቴሌብር ክፍያ ከሆነ መጀመሪያ እሱን ማከናወን
       if (_selectedPaymentKey == 'telebirr') {
-        // "እባክዎ ይጠብቁ..." የሚል ምልክት ማሳየት (Loading)
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -196,45 +198,36 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
           ),
         );
 
-        // ለቴሌብር የሚያስፈልግ ልዩ የትዕዛዝ ቁጥር (Unique Order ID)
         String orderId = "BD-TAX-${DateTime.now().millisecondsSinceEpoch}";
 
         try {
-          // ወደ TelebirrService መላክ
           bool isPaid = await TelebirrService().makePayment(
             phoneNumber: _phoneController.text,
             amount: _amountController.text,
             orderId: orderId,
           );
 
-          // Loading ምልክቱን ማጥፋት
           if (!mounted) return;
-          Navigator.pop(context);
+          Navigator.pop(context); // Loading ማጥፋት
 
           if (!isPaid) {
-            // ክፍያው ካልተሳካ ስህተት አሳይተን እዚህ ጋር እናቆማለን
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('የቴሌብር ክፍያ አልተሳካም! እባክዎ በቂ ሂሳብ መኖሩን ያረጋግጡ።'),
+                content: Text('የቴሌብር ክፍያ አልተሳካም!'),
                 backgroundColor: Colors.red,
               ),
             );
-            return;
+            return; // ክፍያው ካልተሳካ እዚህ ጋር ይቆማል
           }
-          // ክፍያው ከተሳካ ኮዱ ይቀጥላል...
         } catch (e) {
+          if (!mounted) return;
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('የቴሌብር ስህተት: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
           return;
         }
       }
 
-      // 2. ክፍያው ከተሳካ (ወይም Cash ከሆነ) ወደ Firebase መመዝገብ
+      // 2. ክፍያው ከተሳካ (ወይም በCash ከሆነ) ዳታቤዝ ላይ መመዝገብ
+      // *** ልብ በል፡ እዚህ ጋር ነው አንድ ጊዜ ብቻ መመዝገብ ያለበት! ***
       try {
         await FirebaseFirestore.instance.collection('tax_payments').add({
           'fullName': _nameController.text,
@@ -244,12 +237,12 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
           'taxPeriod': _selectedPeriod,
           'amount': _amountController.text,
           'paymentMethod': _selectedPaymentKey,
+          'recordedBy': user?.email ?? "Unknown",
           'createdAt': FieldValue.serverTimestamp(),
         });
 
         if (!mounted) return;
 
-        // ወደ ደረሰኝ ገጽ መሄድ
         Navigator.push(
           context,
           MaterialPageRoute(

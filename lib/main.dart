@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'agent_page.dart';
-import 'admin_dashboard.dart'; // Admin ገጹን ለመጠቀም
+import 'admin_dashboard.dart';
 import 'tax_payer_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Firebaseን እናስነሳዋለን
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   runApp(const BahirDarSmartTaxApp());
 }
 
@@ -26,148 +24,202 @@ class BahirDarSmartTaxApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.grey[100],
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue.shade900),
       ),
-      home: const UserSelectionScreen(),
+      // አፑ ሲከፈት መጀመሪያ የሚመጣው ገጽ
+      home: const AuthWrapper(),
     );
   }
 }
 
-class UserSelectionScreen extends StatelessWidget {
-  const UserSelectionScreen({super.key});
+// አፑ ሰውየው ሎጊን ማድረጉንና አለማድረጉን የሚለይበት ክፍል
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // ገና ዳታው እየመጣ ከሆነ
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        // ሰውየው ገብቶ ከሆነ ወደ Role መምረጫ ይወሰዳል
+        if (snapshot.hasData) {
+          return const UserSelectionScreen();
+        }
+        // ካልገባ ወደ መግቢያ (Login) ገጽ ይወሰዳል
+        return const LoginPage();
+      },
+    );
+  }
+}
+
+// --- 1. እውነተኛ የመግቢያ ገጽ (LoginPage) ---
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('እባክዎ ኢሜይል እና ይለፍ ቃል ያስገቡ')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ስህተት፡ ${e.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.account_balance,
-                  size: 80,
-                  color: Colors.blueAccent,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              const Icon(
+                Icons.account_balance_rounded,
+                size: 80,
+                color: Colors.blueAccent,
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'ባህር ዳር ስማርት ታክስ',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const Text('ለመቀጠል መለያዎትን ያስገቡ'),
+              const SizedBox(height: 30),
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'ኢሜይል',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  'ባህር ዳር ስማርት ታክስ',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'ይለፍ ቃል',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 50),
-
-                // 2. በ UserSelectionScreen ውስጥ የነበረውን የታክስ ፓየር ካርድ እንዲህ ቀይረው፡
-                _buildRoleCard(
-                  context,
-                  title: 'ግብር ከፋይ (Tax Payer)',
-                  subtitle: 'የራስዎን ግብር ለመክፈል',
-                  icon: Icons.person,
-                  color: Colors.blue,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const TaxPayerPage(),
+              ),
+              const SizedBox(height: 25),
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _login,
+                        child: const Text('ግባ (Login)'),
                       ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                // 2. Agent (Protected - Needs PIN "1234")
-                _buildRoleCard(
-                  context,
-                  title: 'ወኪል / ሰራተኛ (Agent)',
-                  subtitle: 'ክፍያዎችን ለመቀበል',
-                  icon: Icons.badge,
-                  color: Colors.green[700]!,
-                  onTap: () => _showPinDialog(context, 'agent'),
-                ),
-                const SizedBox(height: 20),
-
-                // 3. Admin (Protected - Needs PIN "9999")
-                _buildRoleCard(
-                  context,
-                  title: 'አስተዳደር (Admin)',
-                  subtitle: 'ሪፖርቶችን ለማየት',
-                  icon: Icons.admin_panel_settings,
-                  color: Colors.orange[800]!,
-                  onTap: () => _showPinDialog(context, 'admin'),
-                ),
-              ],
-            ),
+                    ),
+            ],
           ),
         ),
       ),
     );
   }
+}
 
-  // --- NEW: PIN Security Logic ---
-  void _showPinDialog(BuildContext context, String role) {
-    final TextEditingController pinController = TextEditingController();
+// --- 2. የRole መምረጫ ገጽ (UserSelectionScreen) ---
+class UserSelectionScreen extends StatelessWidget {
+  const UserSelectionScreen({super.key});
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            role == 'admin'
-                ? 'የአስተዳደር መለያ (Admin PIN)'
-                : 'የሰራተኛ መለያ (Agent PIN)',
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    // የሰራተኛውን ስም ከኢሜይሉ መለየት (ለምሳሌ abebe@tax.com ከሆነ 'Abebe')
+    String displayName = user?.email?.split('@')[0].toUpperCase() ?? "ተጠቃሚ";
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('ሰላም፣ $displayName'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => FirebaseAuth.instance.signOut(),
           ),
-          content: TextField(
-            controller: pinController,
-            keyboardType: TextInputType.number,
-            obscureText: true, // Hide the numbers
-            decoration: const InputDecoration(
-              hintText: 'ሚስጥራዊ ቁጥር ያስገቡ',
-              border: OutlineInputBorder(),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildRoleCard(
+              context,
+              title: 'ግብር ከፋይ (Tax Payer)',
+              subtitle: 'የራስዎን ግብር ለመክፈል',
+              icon: Icons.person_search,
+              color: Colors.blue.shade800,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TaxPayerPage()),
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+            const SizedBox(height: 16),
+            _buildRoleCard(
+              context,
+              title: 'ወኪል / ሰራተኛ (Agent)',
+              subtitle: 'ክፍያዎችን ለመመዝገብ',
+              icon: Icons.point_of_sale,
+              color: Colors.green.shade700,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AgentPaymentPage(),
+                ),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                String pin = pinController.text;
-                Navigator.pop(context); // Close dialog
-
-                // 1. CHECK AGENT PIN (1234)
-                if (role == 'agent' && pin == '1234') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AgentPaymentPage(),
-                    ),
-                  );
-                }
-                // 2. CHECK ADMIN PIN (9999)
-                else if (role == 'admin' && pin == '9999') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AdminDashboard(),
-                    ),
-                  );
-                }
-                // 3. WRONG PIN
-                else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('የተሳሳተ መለያ ቁጥር! (Wrong PIN)'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              child: const Text('ግባ (Login)'),
-            ),
+            const SizedBox(height: 16),
+            if (user?.email == 'admin@tax.com') // አድሚን ከሆነ ብቻ ነው የሚታየው
+              _buildRoleCard(
+                context,
+                title: 'አስተዳደር (Admin)',
+                subtitle: 'ሪፖርቶችን ለማየት',
+                icon: Icons.admin_panel_settings,
+                color: Colors.orange.shade900,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminDashboard(),
+                  ),
+                ),
+              ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -180,46 +232,22 @@ class UserSelectionScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(15),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 30, color: color),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      subtitle,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
-            ],
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: color.withOpacity(0.1),
+            child: Icon(icon, color: color),
           ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(subtitle),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 14),
         ),
       ),
     );

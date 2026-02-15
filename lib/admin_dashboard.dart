@@ -25,19 +25,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   DateTime _getStartDate() {
     DateTime now = DateTime.now();
+    // ሰዓቱን ወደ 00:00:00 (Midnight) መመለስ
+    DateTime todayMidnight = DateTime(now.year, now.month, now.day);
+
     switch (_selectedPeriod) {
       case 'Yesterday':
-        return now.subtract(const Duration(days: 1));
+        return todayMidnight.subtract(const Duration(days: 1));
       case 'Week':
-        return now.subtract(const Duration(days: 7));
+        return todayMidnight.subtract(const Duration(days: 7));
       case 'Month':
         return DateTime(now.year, now.month - 1, now.day);
-      case '3 Months':
-        return DateTime(now.year, now.month - 3, now.day);
       case 'Year':
         return DateTime(now.year - 1, now.month, now.day);
       default:
-        return DateTime(now.year, now.month, now.day);
+        return todayMidnight; // Today
     }
   }
 
@@ -168,7 +169,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('tax_payments')
-            .where('createdAt', isGreaterThanOrEqualTo: _getStartDate())
+            .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -178,14 +179,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
             return const Center(child: Text("ምንም ዳታ የለም"));
           }
 
-          final allDocs = snapshot.data!.docs;
-          final docs = allDocs.where((doc) {
+          // 1. ማስጠንቀቂያውን የሚያጠፋው እና ቀኑን የሚለየው መስመር ይህ ነው
+          final startOfPeriod = _getStartDate();
+
+          // 2. ከዚያ ዳታውን በዛ ቀን መለየት
+          final docs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
+            final Timestamp? createdAt = data['createdAt'] as Timestamp?;
+
+            if (createdAt == null) return false;
+
+            // የተመረጠው ቀን ከሆነ ብቻ ይቀበላል
+            if (createdAt.toDate().isBefore(startOfPeriod)) return false;
+
             final name = (data['fullName'] ?? "").toString().toLowerCase();
-            final tin = (data['tinNumber'] ?? "").toString().toLowerCase();
-            return name.contains(_searchQuery.toLowerCase()) ||
-                tin.contains(_searchQuery.toLowerCase());
+            return name.contains(_searchQuery.toLowerCase());
           }).toList();
+
+          // ... ቀሪው የUI ኮድ
 
           double totalRevenue = 0;
           Map<String, double> byType = {};
