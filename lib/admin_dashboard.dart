@@ -10,7 +10,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 // Web ላይ ለዳውንሎድ የሚያስፈልግ (Conditional Import)
 // ማሳሰቢያ፡ ይህ ለድር (Web) ብቻ ስለሆነ ለሞባይል ሲሰራ ችግር ሊፈጥር ይችላል
 // ለጊዜው ችግር ካመጣብህ 'dart:html' የሚለውን መስመር ማጥፋት ይቻላል
-import 'dart:html' as html;
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -91,15 +90,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       final bytes = utf8.encode(csvData);
 
       if (kIsWeb) {
-        final blob = html.Blob([bytes], 'text/csv');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        html.AnchorElement(href: url)
-          ..setAttribute(
-            "download",
-            "BahirDar_Revenue_Report_$_selectedPeriod.csv",
-          )
-          ..click();
-        html.Url.revokeObjectUrl(url);
+        // ዌብ ላይ ስንሆን ብቻ የሚሰራ (ለአሁኑ ለ APK ሲባል ተዘግቷል)
+        debugPrint("Download started on Web");
       } else {
         await Share.shareXFiles([
           XFile.fromData(
