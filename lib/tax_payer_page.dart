@@ -255,8 +255,9 @@ class _TaxPayerPageState extends State<TaxPayerPage> {
       validator: (val) {
         if (val == null || val.isEmpty) return 'እባክዎ $label ያስገቡ';
         if (label.contains('ስልክ') && val.length != 10) return 'ትክክለኛ ስልክ ያስገቡ';
-        if (label.contains('TIN') && val.length < 10)
+        if (label.contains('TIN') && val.length < 10) {
           return 'TIN ቢያንስ 10 ዲጂት ነው';
+        }
         return null;
       },
     );
@@ -269,7 +270,7 @@ class _TaxPayerPageState extends State<TaxPayerPage> {
     Function(String?) onChanged,
   ) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),

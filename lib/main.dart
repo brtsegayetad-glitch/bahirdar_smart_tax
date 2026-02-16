@@ -1,13 +1,13 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb; // አዲስ የተጨመረ
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'agent_page.dart';
 import 'admin_dashboard.dart';
 import 'tax_payer_page.dart';
 import 'login_page.dart';
 
-// 1. የቴሌብር ክፍያ እንዲሰራ (Security Bypass)
+// 1. የቴሌብር ክፍያ እንዲሰራ (ለሞባይል ብቻ)
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -19,8 +19,25 @@ class MyHttpOverrides extends HttpOverrides {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  HttpOverrides.global = MyHttpOverrides();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // በWeb ላይ ከሆነ HttpOverrides አያስፈልግም (ስህተት እንዳይመጣ)
+  if (!kIsWeb) {
+    HttpOverrides.global = MyHttpOverrides();
+  }
+
+  // 2. የFirebase ኮንፊገሬሽን (የሰጠኸኝን መረጃ እዚህ አስገብቼዋለሁ)
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyC2tdrXOp5xDDRXUwKXp1q21rZ5nNAOZUM",
+      authDomain: "bahirdar-smart-tax.firebaseapp.com",
+      projectId: "bahirdar-smart-tax",
+      storageBucket: "bahirdar-smart-tax.firebasestorage.app",
+      messagingSenderId: "1021409884080",
+      appId: "1:1021409884080:web:76bd7fef20475719d84875",
+      measurementId: "G-3XHP4T0ZC3",
+    ),
+  );
+
   runApp(const BahirDarSmartTaxApp());
 }
 

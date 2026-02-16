@@ -294,11 +294,13 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
         if (val == null || val.isEmpty) return 'እባክዎ $label ያስገቡ';
         if (label == 'ስልክ ቁጥር') {
           if (val.length != 10) return 'ስልክ ቁጥር 10 ዲጂት መሆን አለበት';
-          if (!val.startsWith('09') && !val.startsWith('07'))
+          if (!val.startsWith('09') && !val.startsWith('07')) {
             return 'በ 09 ወይም 07 መጀመር አለበት';
+          }
         }
-        if (label == 'የTIN ቁጥር' && val.length < 10)
+        if (label == 'የTIN ቁጥር' && val.length < 10) {
           return 'ቢያንስ 10 ዲጂት መሆን አለበት';
+        }
         if (label.contains('መጠን')) {
           double? amt = double.tryParse(val);
           if (amt == null || amt <= 0) return 'ትክክለኛ ቁጥር ያስገቡ';
@@ -318,7 +320,7 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),

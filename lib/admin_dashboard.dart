@@ -9,7 +9,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'widgets/custom_app_bar.dart';
 
 // Web ላይ ለዳውንሎድ የሚያስፈልግ (Conditional Import)
-import 'dart:html' as html;
+// ይህ ለሞባይል ሪፖርት መላኪያ ነው
+import 'web_download_stub.dart' if (dart.library.html) 'web_download_web.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -52,6 +53,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     try {
       List<List<dynamic>> rows = [];
 
+      // ርዕሶች
       rows.add([
         "ሙሉ ስም",
         "TIN ቁጥር",
@@ -86,23 +88,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ]);
       }
 
+      // ጠቅላላ ድምርን መጨመር
       rows.add([]);
       rows.add(["", "", "", "", "", "ጠቅላላ ድምር፡", grandTotal, "ብር"]);
 
       String csvData = const ListToCsvConverter().convert(rows);
       final bytes = utf8.encode(csvData);
 
+      // --- አዲሱ የ Conditional Logic እዚህ ጋር ይጀምራል ---
       if (kIsWeb) {
-        final blob = html.Blob([bytes], 'text/csv');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        html.AnchorElement(href: url)
-          ..setAttribute(
-            "download",
-            "BahirDar_Revenue_Report_$_selectedPeriod.csv",
-          )
-          ..click();
-        html.Url.revokeObjectUrl(url);
+        // በWeb ላይ ከሆነ 'web_download_web.dart' ውስጥ ያለውን ፋንክሽን ይጠራል
+        downloadWebFile(
+          bytes,
+          "BahirDar_Revenue_Report_${_selectedPeriod.replaceAll(' ', '_')}.csv",
+        );
       } else {
+        // በሞባይል (Android/iOS) ላይ ከሆነ ሼር ያደርጋል
         await Share.shareXFiles([
           XFile.fromData(
             Uint8List.fromList(bytes),
@@ -111,12 +112,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ], text: 'የባህር ዳር ከተማ ገቢዎች ሪፖርት');
       }
+      // --- መጨረሻ ---
 
       _showSuccessDialog();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ሪፖርት ማውጣት አልተቻለም: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

@@ -35,8 +35,11 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // 1. እነዚህን ሁለት መስመሮች መጨመርህ አፑ እንዳይቆም ያደርገዋል
+            isMinifyEnabled = false
+            isShrinkResources = false
+            
+            // 2. Signing config (እንዳለ ይቆይ)
             signingConfig = signingConfigs.getByName("debug")
         }
     }
