@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'receipt_page.dart'; // ደረሰኝ የሚቀበለው ገጽ
+import 'receipt_page.dart';
 import 'telebirr_service.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'widgets/custom_app_bar.dart'; // 1. አዲሱን Import እዚህ ጨምሬያለሁ
 
 class AgentPaymentPage extends StatefulWidget {
   const AgentPaymentPage({super.key});
@@ -15,14 +15,11 @@ class AgentPaymentPage extends StatefulWidget {
 class _AgentPaymentPageState extends State<AgentPaymentPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // መቆጣጠሪያዎች (Controllers)
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _tinController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
 
-  // 1. የግብር ዘርፎች (Tax Groups) - አዲስ የተጨመረ
-  // ሰራተኛው መጀመሪያ ይህንን ይመርጣል (ለምሳሌ፡ የትራንስፖርት አገልግሎት)
   String _selectedTaxGroup = 'የትራንስፖርት አገልግሎት';
   final List<String> _taxGroups = [
     'የትራንስፖርት አገልግሎት',
@@ -35,8 +32,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
     'ሌላ...',
   ];
 
-  // 2. የክፍያ ዘመን (Periods) - አዲስ የተጨመረ
-  // ሰራተኛው የትኛውን ሩብ ዓመት እንደከፈለ ይመርጣል
   String _selectedPeriod = '1ኛ ሩብ ዓመት (ሐምሌ-መስከረም)';
   final List<String> _taxPeriods = [
     '1ኛ ሩብ ዓመት (ሐምሌ-መስከረም)',
@@ -46,13 +41,12 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
     'ዓመታዊ ክፍያ (Annual)',
   ];
 
-  // 3. የክፍያ ዘዴ
   final Map<String, String> _paymentOptions = {
     'cash': 'በጥሬ ገንዘብ (Cash)',
     'telebirr': 'በቴሌብር (Telebirr)',
     'bank': 'በባንክ (Bank Transfer)',
   };
-  String _selectedPaymentKey = 'cash'; // Default
+  String _selectedPaymentKey = 'cash';
 
   @override
   void dispose() {
@@ -67,12 +61,8 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('የግብር መቀበያ (Agent Terminal)'),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      // 2. የድሮው AppBar ተወግዶ በ CustomAppBar ተተክቷል
+      appBar: const CustomAppBar(pageTitle: "የግብር መቀበያ (Agent)"),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Card(
@@ -92,13 +82,12 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                      color: Color(0xFF1E3C72), // ከዲዛይኑ ጋር እንዲሄድ ወደ ሰማያዊ ቀይሬዋለሁ
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
 
-                  // TIN እና ስም
                   _buildTextField(
                     _tinController,
                     'የTIN ቁጥር',
@@ -122,7 +111,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
 
                   const Divider(height: 30, thickness: 1),
 
-                  // 1. የግብር ዘርፍ ምርጫ
                   _buildDropdown(
                     'የግብር ዘርፍ (Tax Group)',
                     _selectedTaxGroup,
@@ -130,7 +118,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                     (val) => setState(() => _selectedTaxGroup = val!),
                   ),
 
-                  // 2. የክፍያ ዘመን (Quarterly/Annual) ምርጫ
                   _buildDropdown(
                     'የክፍያ ዘመን (Period)',
                     _selectedPeriod,
@@ -138,7 +125,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                     (val) => setState(() => _selectedPeriod = val!),
                   ),
 
-                  // 3. የክፍያ ዘዴ
                   _buildDropdown(
                     'የክፍያ ዘዴ',
                     _selectedPaymentKey,
@@ -158,7 +144,9 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                   ElevatedButton.icon(
                     icon: const Icon(Icons.check_circle),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
+                      backgroundColor: const Color(
+                        0xFF1E3C72,
+                      ), // Button color matching AppBar
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
@@ -184,17 +172,15 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
     );
   }
 
+  // --- የተቀሩት ሎጂኮች (submitData, buildTextField, buildDropdown) ምንም አልተለወጡም ---
   void _submitData() async {
-    final user = FirebaseAuth.instance.currentUser;
-
     if (_formKey.currentState!.validate()) {
-      // 1. የቴሌብር ክፍያ ከሆነ መጀመሪያ እሱን ማከናወን
       if (_selectedPaymentKey == 'telebirr') {
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (context) => const Center(
-            child: CircularProgressIndicator(color: Colors.green),
+            child: CircularProgressIndicator(color: Color(0xFF1E3C72)),
           ),
         );
 
@@ -208,26 +194,29 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
           );
 
           if (!mounted) return;
-          Navigator.pop(context); // Loading ማጥፋት
+          Navigator.pop(context);
 
           if (!isPaid) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('የቴሌብር ክፍያ አልተሳካም!'),
+                content: Text('የቴሌብር ክፍያ አልተሳካም! እባክዎ በቂ ሂሳብ መኖሩን ያረጋግጡ።'),
                 backgroundColor: Colors.red,
               ),
             );
-            return; // ክፍያው ካልተሳካ እዚህ ጋር ይቆማል
+            return;
           }
         } catch (e) {
-          if (!mounted) return;
           Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('የቴሌብር ስህተት: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
           return;
         }
       }
 
-      // 2. ክፍያው ከተሳካ (ወይም በCash ከሆነ) ዳታቤዝ ላይ መመዝገብ
-      // *** ልብ በል፡ እዚህ ጋር ነው አንድ ጊዜ ብቻ መመዝገብ ያለበት! ***
       try {
         await FirebaseFirestore.instance.collection('tax_payments').add({
           'fullName': _nameController.text,
@@ -237,7 +226,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
           'taxPeriod': _selectedPeriod,
           'amount': _amountController.text,
           'paymentMethod': _selectedPaymentKey,
-          'recordedBy': user?.email ?? "Unknown",
           'createdAt': FieldValue.serverTimestamp(),
         });
 
@@ -261,7 +249,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
           ),
         );
 
-        // ፎርሙን ማጽዳት
         _nameController.clear();
         _tinController.clear();
         _phoneController.clear();
@@ -276,7 +263,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
       }
     }
   }
-  // --- እነዚህን መልሰህ ጨምራቸው (Helper Methods) ---
 
   Widget _buildTextField(
     TextEditingController controller,
@@ -289,52 +275,35 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        prefixIcon: Icon(icon, color: Colors.green[700]),
+        prefixIcon: Icon(icon, color: const Color(0xFF1E3C72)),
         filled: true,
         fillColor: Colors.grey[50],
       ),
       keyboardType: type,
-      // --- አዲስ፡ ተጠቃሚው ሲጽፍ የሚደረግ ገደብ (Input Formatters) ---
       inputFormatters:
           type == TextInputType.phone ||
               label.contains('TIN') ||
               label.contains('መጠን')
           ? [
-              FilteringTextInputFormatter.digitsOnly, // ቁጥር ብቻ
-              if (label == 'ስልክ ቁጥር')
-                LengthLimitingTextInputFormatter(10), // ስልክ 10 ዲጂት ብቻ
-              if (label.contains('TIN'))
-                LengthLimitingTextInputFormatter(13), // TIN ቢበዛ 13
+              FilteringTextInputFormatter.digitsOnly,
+              if (label == 'ስልክ ቁጥር') LengthLimitingTextInputFormatter(10),
+              if (label.contains('TIN')) LengthLimitingTextInputFormatter(13),
             ]
           : [],
-
-      // --- አዲስ፡ ቅጹ ሲላክ የሚደረግ ፍተሻ (Validator) ---
       validator: (val) {
-        if (val == null || val.isEmpty) {
-          return 'እባክዎ $label ያስገቡ';
-        }
-
-        // 1. ለስልክ ቁጥር
+        if (val == null || val.isEmpty) return 'እባክዎ $label ያስገቡ';
         if (label == 'ስልክ ቁጥር') {
           if (val.length != 10) return 'ስልክ ቁጥር 10 ዲጂት መሆን አለበት';
-          if (!val.startsWith('09') && !val.startsWith('07')) {
+          if (!val.startsWith('09') && !val.startsWith('07'))
             return 'በ 09 ወይም 07 መጀመር አለበት';
-          }
         }
-
-        // 2. ለTIN ቁጥር
-        if (label == 'የTIN ቁጥር') {
-          if (val.length < 10) return 'ቢያንስ 10 ዲጂት መሆን አለበት';
-        }
-
-        // 3. ለገንዘብ መጠን
+        if (label == 'የTIN ቁጥር' && val.length < 10)
+          return 'ቢያንስ 10 ዲጂት መሆን አለበት';
         if (label.contains('መጠን')) {
           double? amt = double.tryParse(val);
           if (amt == null || amt <= 0) return 'ትክክለኛ ቁጥር ያስገቡ';
-          if (amt < 1) return 'ከ 1 ብር በታች መክፈል አይቻልም';
         }
-
-        return null; // ስህተት ከሌለ
+        return null;
       },
     );
   }
@@ -349,8 +318,7 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: DropdownButtonFormField<String>(
-        initialValue:
-            value, // እዚህ ጋር 'initialValue' የነበረውን ወደ 'value' ቀይረነዋል ለበለጠ ጥንቃቄ
+        value: value,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),

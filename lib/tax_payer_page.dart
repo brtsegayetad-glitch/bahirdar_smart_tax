@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'telebirr_service.dart';
+import 'package:flutter/services.dart'; // ለቁጥር ገደቦች አስፈላጊ ነው
+import 'widgets/custom_app_bar.dart';
 
 class TaxPayerPage extends StatefulWidget {
   const TaxPayerPage({super.key});
@@ -12,13 +14,12 @@ class TaxPayerPage extends StatefulWidget {
 class _TaxPayerPageState extends State<TaxPayerPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // መቆጣጠሪያዎች (Controllers)
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _tinController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
 
-  // የግብር ዘርፎች (Tax Groups)
+  // የግብር ዘርፎች
   String _selectedTaxGroup = 'የከተማ ግብር';
   final List<String> _taxGroups = [
     'የከተማ ግብር',
@@ -26,6 +27,16 @@ class _TaxPayerPageState extends State<TaxPayerPage> {
     'የንግድ ትርፍ ግብር',
     'የግል ሙያዊ አገልግሎት',
     'ሌላ...',
+  ];
+
+  // አዲስ፡ የክፍያ ዘመን (Period) - ዳታው ከ Admin ጋር እንዲናበብ
+  String _selectedPeriod = '1ኛ ሩብ ዓመት (ሐምሌ-መስከረም)';
+  final List<String> _taxPeriods = [
+    '1ኛ ሩብ ዓመት (ሐምሌ-መስከረም)',
+    '2ኛ ሩብ ዓመት (ጥቅምት-ታህሳስ)',
+    '3ኛ ሩብ ዓመት (ጥር-መጋቢት)',
+    '4ኛ ሩብ ዓመት (ሚያዝያ-ሰኔ)',
+    'ዓመታዊ ክፍያ (Annual)',
   ];
 
   bool _isProcessing = false;
@@ -43,7 +54,6 @@ class _TaxPayerPageState extends State<TaxPayerPage> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isProcessing = true);
 
-      // 1. የቴሌብር ክፍያ ሂደት
       String orderId = "BD-SELF-TAX-${DateTime.now().millisecondsSinceEpoch}";
 
       try {
@@ -54,12 +64,13 @@ class _TaxPayerPageState extends State<TaxPayerPage> {
         );
 
         if (isPaid) {
-          // 2. ክፍያው ከተሳካ ወደ Firebase መመዝገብ
+          // 'taxPeriod' እዚህ ጋር ተጨምሯል
           await FirebaseFirestore.instance.collection('tax_payments').add({
             'fullName': _nameController.text,
             'tinNumber': _tinController.text,
             'phone': _phoneController.text,
             'taxGroup': _selectedTaxGroup,
+            'taxPeriod': _selectedPeriod, // መረሳት የሌለበት!
             'amount': _amountController.text,
             'paymentMethod': 'telebirr (Self)',
             'createdAt': FieldValue.serverTimestamp(),
@@ -84,13 +95,13 @@ class _TaxPayerPageState extends State<TaxPayerPage> {
       builder: (ctx) => AlertDialog(
         title: const Text("ክፍያው ተሳክቷል"),
         content: const Text(
-          "የግብር ክፍያዎ በስኬት ተጠናቋል። ዲጂታል ደረሰኝዎ በFirebase ተመዝግቧል።",
+          "የግብር ክፍያዎ በስኬት ተጠናቋል። ዲጂታል ደረሰኝዎ በስርዓቱ ላይ ተመዝግቧል።",
         ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.pop(context); // ወደ ዋናው ገጽ ይመለሳል
+              Navigator.pop(context);
             },
             child: const Text("እሺ"),
           ),
@@ -108,70 +119,110 @@ class _TaxPayerPageState extends State<TaxPayerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('የግብር መክፈያ (Tax Payer)'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: Colors.grey[50],
+      appBar: const CustomAppBar(pageTitle: "የግብር መክፈያ (Self Service)"),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'የመንግስት ግብርዎን እዚህ ይክፈሉ',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(_nameController, 'ሙሉ ስም', Icons.person),
-              const SizedBox(height: 15),
-              _buildTextField(
-                _tinController,
-                'የTIN ቁጥር',
-                Icons.badge,
-                isNumber: true,
-              ),
-              const SizedBox(height: 15),
-              _buildTextField(
-                _phoneController,
-                'የቴሌብር ስልክ ቁጥር',
-                Icons.phone,
-                isNumber: true,
-              ),
-              const SizedBox(height: 15),
-              _buildDropdown(),
-              const SizedBox(height: 15),
-              _buildTextField(
-                _amountController,
-                'የገንዘብ መጠን (ብር)',
-                Icons.money,
-                isNumber: true,
-              ),
-              const SizedBox(height: 30),
-
-              _isProcessing
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton.icon(
-                      icon: const Icon(Icons.payment),
-                      label: const Text(
-                        "በቴሌብር አሁኑኑ ክፈል",
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        backgroundColor: Colors.blueAccent,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _processPayment,
+        child: Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'የመንግስት ግብርዎን እዚህ ይክፈሉ',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E3C72),
                     ),
-            ],
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 25),
+
+                  _buildTextField(
+                    _nameController,
+                    'ሙሉ ስም',
+                    Icons.person,
+                    TextInputType.text,
+                  ),
+                  const SizedBox(height: 15),
+                  _buildTextField(
+                    _tinController,
+                    'የTIN ቁጥር',
+                    Icons.badge,
+                    TextInputType.number,
+                  ),
+                  const SizedBox(height: 15),
+                  _buildTextField(
+                    _phoneController,
+                    'የቴሌብር ስልክ ቁጥር',
+                    Icons.phone,
+                    TextInputType.phone,
+                  ),
+
+                  const Divider(height: 40),
+
+                  // የግብር ዘርፍ
+                  _buildDropdown(
+                    "የግብር አይነት",
+                    _selectedTaxGroup,
+                    _taxGroups,
+                    (val) => setState(() => _selectedTaxGroup = val!),
+                  ),
+                  const SizedBox(height: 15),
+
+                  // የክፍያ ዘመን
+                  _buildDropdown(
+                    "የክፍያ ዘመን (Period)",
+                    _selectedPeriod,
+                    _taxPeriods,
+                    (val) => setState(() => _selectedPeriod = val!),
+                  ),
+                  const SizedBox(height: 15),
+
+                  _buildTextField(
+                    _amountController,
+                    'የገንዘብ መጠን (ብር)',
+                    Icons.money,
+                    TextInputType.number,
+                  ),
+                  const SizedBox(height: 30),
+
+                  _isProcessing
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF1E3C72),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          icon: const Icon(Icons.security),
+                          label: const Text(
+                            "በቴሌብር ክፍያውን ፈጽም",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            backgroundColor: const Color(0xFF1E3C72),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: _processPayment,
+                        ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -181,69 +232,59 @@ class _TaxPayerPageState extends State<TaxPayerPage> {
   Widget _buildTextField(
     TextEditingController controller,
     String label,
-    IconData icon, {
-    bool isNumber = false,
-  }) {
+    IconData icon,
+    TextInputType type,
+  ) {
     return TextFormField(
       controller: controller,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      keyboardType: type,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
+        prefixIcon: Icon(icon, color: const Color(0xFF1E3C72)),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: Colors.grey[50],
       ),
-      // እዚህ ጋር ነው ህጎቹን የምንጨምረው
+      inputFormatters:
+          type == TextInputType.number || type == TextInputType.phone
+          ? [
+              FilteringTextInputFormatter.digitsOnly,
+              if (label.contains('ስልክ')) LengthLimitingTextInputFormatter(10),
+            ]
+          : [],
       validator: (val) {
-        if (val == null || val.isEmpty) {
-          return 'እባክዎ $label ያስገቡ';
-        }
-
-        // ለስልክ ቁጥር ብቻ የሚሰሩ ህጎች
-        if (label == 'የቴሌብር ስልክ ቁጥር') {
-          // ቁጥሩ 10 መሆን አለበት እና በ 09 ወይም 07 መጀመር አለበት
-          if (val.length != 10) {
-            return 'ስልክ ቁጥር 10 ዲጂት መሆን አለበት';
-          }
-          if (!val.startsWith('09') && !val.startsWith('07')) {
-            return 'ስልክ ቁጥር በ 09 ወይም 07 መጀመር አለበት';
-          }
-        }
-
-        // ለTIN ቁጥር (ለምሳሌ 10 ዲጂት መሆን ካለበት)
-        if (label == 'የTIN ቁጥር') {
-          if (val.length < 10) {
-            return 'ትክክለኛ የTIN ቁጥር ያስገቡ (ቢያንስ 10 ዲጂት)';
-          }
-        }
-
-        // ለገንዘብ መጠን
-        if (label == 'የገንዘብ መጠን (ብር)') {
-          double? amount = double.tryParse(val);
-          if (amount == null || amount <= 0) {
-            return 'እባክዎ ትክክለኛ የገንዘብ መጠን ያስገቡ';
-          }
-          if (amount > 100000) {
-            // ለደህንነት ሲባል ገደብ ማስቀመጥ
-            return 'በአንድ ጊዜ ከ100,000 ብር በላይ መክፈል አይቻልም';
-          }
-        }
-
-        return null; // ሁሉም ነገር ትክክል ከሆነ null ይመልሳል (ቀዩ ይጠፋል)
+        if (val == null || val.isEmpty) return 'እባክዎ $label ያስገቡ';
+        if (label.contains('ስልክ') && val.length != 10) return 'ትክክለኛ ስልክ ያስገቡ';
+        if (label.contains('TIN') && val.length < 10)
+          return 'TIN ቢያንስ 10 ዲጂት ነው';
+        return null;
       },
     );
   }
 
-  Widget _buildDropdown() {
+  Widget _buildDropdown(
+    String label,
+    String value,
+    List<String> items,
+    Function(String?) onChanged,
+  ) {
     return DropdownButtonFormField<String>(
-      initialValue: _selectedTaxGroup,
+      value: value,
       decoration: InputDecoration(
-        labelText: 'የግብር አይነት',
+        labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: Colors.grey[50],
       ),
-      items: _taxGroups
-          .map((group) => DropdownMenuItem(value: group, child: Text(group)))
+      items: items
+          .map(
+            (group) => DropdownMenuItem(
+              value: group,
+              child: Text(group, style: const TextStyle(fontSize: 13)),
+            ),
+          )
           .toList(),
-      onChanged: (val) => setState(() => _selectedTaxGroup = val!),
+      onChanged: onChanged,
     );
   }
 }

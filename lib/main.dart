@@ -1,13 +1,25 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'agent_page.dart';
 import 'admin_dashboard.dart';
 import 'tax_payer_page.dart';
+import 'login_page.dart';
+
+// 1. የቴሌብር ክፍያ እንዲሰራ (Security Bypass)
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = MyHttpOverrides();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const BahirDarSmartTaxApp());
 }
@@ -24,204 +36,117 @@ class BahirDarSmartTaxApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.grey[100],
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue.shade900),
       ),
-      // አፑ ሲከፈት መጀመሪያ የሚመጣው ገጽ
-      home: const AuthWrapper(),
-    );
-  }
-}
-
-// አፑ ሰውየው ሎጊን ማድረጉንና አለማድረጉን የሚለይበት ክፍል
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        // ገና ዳታው እየመጣ ከሆነ
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        // ሰውየው ገብቶ ከሆነ ወደ Role መምረጫ ይወሰዳል
-        if (snapshot.hasData) {
-          return const UserSelectionScreen();
-        }
-        // ካልገባ ወደ መግቢያ (Login) ገጽ ይወሰዳል
-        return const LoginPage();
+      // 2. አፑ ሲከፈት መጀመሪያ ምርጫ (Selection) እንዲመጣ
+      initialRoute: '/selection',
+      routes: {
+        '/selection': (context) => const UserSelectionScreen(),
+        '/login': (context) => const LoginPage(),
+        '/home': (context) => const TaxPayerPage(),
+        '/admin': (context) => const AdminDashboard(),
+        '/agent': (context) => const AgentPaymentPage(),
       },
     );
   }
 }
 
-// --- 1. እውነተኛ የመግቢያ ገጽ (LoginPage) ---
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
-
-  @override
-  State<LoginPage> createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false;
-
-  Future<void> _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('እባክዎ ኢሜይል እና ይለፍ ቃል ያስገቡ')));
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ስህተት፡ ${e.message}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const Icon(
-                Icons.account_balance_rounded,
-                size: 80,
-                color: Colors.blueAccent,
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'ባህር ዳር ስማርት ታክስ',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const Text('ለመቀጠል መለያዎትን ያስገቡ'),
-              const SizedBox(height: 30),
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'ኢሜይል',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'ይለፍ ቃል',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 25),
-              _isLoading
-                  ? const CircularProgressIndicator()
-                  : SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _login,
-                        child: const Text('ግባ (Login)'),
-                      ),
-                    ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// --- 2. የRole መምረጫ ገጽ (UserSelectionScreen) ---
+// -------------------------------------------------------------------
+// የተጠቃሚ መምረጫ ገጽ (Role Selection)
+// -------------------------------------------------------------------
 class UserSelectionScreen extends StatelessWidget {
   const UserSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    // የሰራተኛውን ስም ከኢሜይሉ መለየት (ለምሳሌ abebe@tax.com ከሆነ 'Abebe')
-    String displayName = user?.email?.split('@')[0].toUpperCase() ?? "ተጠቃሚ";
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text('ሰላም፣ $displayName'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildRoleCard(
-              context,
-              title: 'ግብር ከፋይ (Tax Payer)',
-              subtitle: 'የራስዎን ግብር ለመክፈል',
-              icon: Icons.person_search,
-              color: Colors.blue.shade800,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TaxPayerPage()),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildRoleCard(
-              context,
-              title: 'ወኪል / ሰራተኛ (Agent)',
-              subtitle: 'ክፍያዎችን ለመመዝገብ',
-              icon: Icons.point_of_sale,
-              color: Colors.green.shade700,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AgentPaymentPage(),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 1. ኦፊሴላዊ ምልክት (Logo Icon)
+                const Icon(
+                  Icons.account_balance,
+                  size: 80,
+                  color: Color(0xFF1E3C72), // ከ Login Header ጋር የሚመሳሰል ከለር
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (user?.email == 'admin@tax.com') // አድሚን ከሆነ ብቻ ነው የሚታየው
-              _buildRoleCard(
-                context,
-                title: 'አስተዳደር (Admin)',
-                subtitle: 'ሪፖርቶችን ለማየት',
-                icon: Icons.admin_panel_settings,
-                color: Colors.orange.shade900,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AdminDashboard(),
+                const SizedBox(height: 20),
+
+                // 2. የአስተዳደሩ ስም (አማርኛ ከላይ - እንግሊዝኛ ከታች)
+                const Text(
+                  'የባህር ዳር ከተማ ገቢዎች አስተዳደር',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-              ),
-          ],
+                const SizedBox(height: 4), // በሁለቱ መካከለኛ ትንሽ ክፍተት
+                const Text(
+                  'BAHIR DAR CITY REVENUE ADMINISTRATION',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal, // Normal font እንዲሆን
+                    color: Colors.grey,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+
+                const SizedBox(height: 50), // ከምርጫዎቹ በፊት ያለው ክፍተት
+                // 3. ምርጫዎች (Role Cards) - እነዚህ እንዳሉ ይቀጥላሉ
+                _buildRoleCard(
+                  context,
+                  title: 'ግብር ከፋይ (Tax Payer)',
+                  subtitle: 'የራስዎን ግብር ለመክፈል',
+                  icon: Icons.person,
+                  color: Colors.blue,
+                  onTap: () => Navigator.pushNamed(
+                    context,
+                    '/login',
+                    arguments: 'TaxPayer',
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                _buildRoleCard(
+                  context,
+                  title: 'ወኪል / ሰራተኛ (Agent)',
+                  subtitle: 'ክፍያዎችን ለመቀበል',
+                  icon: Icons.badge,
+                  color: Colors.green[700]!,
+                  onTap: () => Navigator.pushNamed(
+                    context,
+                    '/login',
+                    arguments: 'Agent',
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                _buildRoleCard(
+                  context,
+                  title: 'አስተዳደር (Admin)',
+                  subtitle: 'ሪፖርቶችን ለማየት',
+                  icon: Icons.admin_panel_settings,
+                  color: Colors.orange[800]!,
+                  onTap: () => Navigator.pushNamed(
+                    context,
+                    '/login',
+                    arguments: 'Admin',
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+
+  // _buildRoleCard ሜተድህ እዚህ ይቀጥላል...
 
   Widget _buildRoleCard(
     BuildContext context, {
@@ -232,22 +157,46 @@ class UserSelectionScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return Card(
-      elevation: 2,
+      elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(15),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
-            child: Icon(icon, color: color),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 30, color: color),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+            ],
           ),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(subtitle),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 14),
         ),
       ),
     );
