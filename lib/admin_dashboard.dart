@@ -10,7 +10,7 @@ import 'widgets/custom_app_bar.dart';
 
 // Web ላይ ለዳውንሎድ የሚያስፈልግ (Conditional Import)
 // ይህ ለሞባይል ሪፖርት መላኪያ ነው
-import 'web_download_stub.dart' if (dart.library.html) 'web_download_web.dart';
+// import 'web_download_stub.dart' if (dart.library.html) 'web_download_web.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -98,10 +98,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       // --- አዲሱ የ Conditional Logic እዚህ ጋር ይጀምራል ---
       if (kIsWeb) {
         // በWeb ላይ ከሆነ 'web_download_web.dart' ውስጥ ያለውን ፋንክሽን ይጠራል
-        downloadWebFile(
-          bytes,
-          "BahirDar_Revenue_Report_${_selectedPeriod.replaceAll(' ', '_')}.csv",
-        );
+        //downloadWebFile(
+        //bytes,
+        //"BahirDar_Revenue_Report_${_selectedPeriod.replaceAll(' ', '_')}.csv",
+        //);
       } else {
         // በሞባይል (Android/iOS) ላይ ከሆነ ሼር ያደርጋል
         await Share.shareXFiles([
