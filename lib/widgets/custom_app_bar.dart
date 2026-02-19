@@ -19,8 +19,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  "የባህር ዳር ከተማ ገቢዎች መመሪያ",
+                const Text( 
+                  "የባህር ዳር ከተማ አስተዳደር ገቢዎች ጽ/ቤት",
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -28,7 +28,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
                 Text(
-                  "BAHIR DAR CITY REVENUE ADMINISTRATION",
+                  "BAHIR DAR CITY ADMINISTRATION REVENUE OFFICE",
                   style: TextStyle(
                     fontSize: 8,
                     color: Colors.white.withOpacity(0.7),

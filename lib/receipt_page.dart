@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ReceiptPage extends StatelessWidget {
   final Map<String, String> data;
@@ -8,149 +9,132 @@ class ReceiptPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. QR Code ላይ የሚቀመጠው መረጃ (አዲሶቹን መረጃዎች አካተናል)
+    // 1. መረጃዎቹን ማዘጋጀት
+    final String name = data['name'] ?? data['fullName'] ?? 'ያልተጠቀሰ';
+    final String tin = data['tin'] ?? data['tinNumber'] ?? 'ያልተጠቀሰ';
+    final String amount = data['amount'] ?? '0.00';
+    final String group = data['group'] ?? data['taxGroup'] ?? 'አጠቃላይ';
+    final String period = data['period'] ?? data['taxPeriod'] ?? '2016 ዓ.ም';
+    final String method = data['method'] ?? data['paymentMethod'] ?? 'Telebirr';
+    final String agent = data['agentName'] ?? 'ኤጀንት 01';
+
+    // ለደረሰኝ ቁጥር የሚሆን ተለዋዋጭ (እዚህ ጋር ተገልጿል)
+    final String receiptNo =
+        "BD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}";
+
+    // 2. ለ QR Code የሚሆን ዳታ (Multi-line string)
     final String qrData =
-        "TIN: ${data['tin']}\n"
-        "Name: ${data['name']}\n"
-        "Group: ${data['group']}\n" // የግብር ዘርፍ
-        "Period: ${data['period']}\n" // የክፍያ ዘመን
-        "Amount: ${data['amount']} ETB\n"
-        "Date: ${DateTime.now().toString().split('.')[0]}";
+        """
+የባህር ዳር ከተማ አስተዳደር ገቢዎች ጽ/ቤት
+የክፍያ ማረጋገጫ (Official Receipt)
+----------------------------------
+ደረሰኝ ቁጥር: $receiptNo
+ግብር ከፋይ: $name
+የቲን ቁጥር: $tin
+የግብር ዘርፍ: $group
+የክፍያ ዘመን: $period
+የክፍያ ዘዴ: $method
+ጠቅላላ ክፍያ: $amount ETB
+ሰብሳቢ (Agent): $agent
+ቀን: ${DateTime.now().toString().split(' ')[0]}
+----------------------------------
+VERIFIED ✅
+""";
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: const Text('የክፍያ ደረሰኝ'),
-        centerTitle: true,
-        backgroundColor:
-            Colors.green[700], // ከ Agent page ጋር እንዲሄድ አረንጓዴ አደረግነው
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('የክፍያ ማረጋገጫ ደረሰኝ'),
+        backgroundColor: Colors.green[800],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              final String receiptText =
+                  """
+📜 የባህር ዳር ገቢዎች ደረሰኝ
+ደረሰኝ ቁጥር: $receiptNo
+ግብር ከፋይ: $name
+TIN: $tin
+መጠን: $amount ETB
+""";
+              Share.share(receiptText);
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(25),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 10),
                 ],
               ),
               child: Column(
                 children: [
-                  // የባለስልጣኑ አርማ/ስም
-                  Icon(Icons.verified, color: Colors.green[700], size: 60),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'የባህር ዳር ከተማ ገቢዎች ባለስልጣን',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Text(
-                    'Bahir Dar City Revenues Authority',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const Divider(height: 30, thickness: 1),
+                  _buildHeader(),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPaidBadge(),
+                        const SizedBox(height: 20),
 
-                  // 2. ዋናው መረጃ (አዲሶቹን መስኮች ጨምረናል)
-                  _receiptRow('ግብር ከፋይ:', data['name'] ?? ''),
-                  _receiptRow('TIN ቁጥር:', data['tin'] ?? ''),
-                  const SizedBox(height: 10), // ክፍተት
-                  // እዚህ ጋር ነው ለውጡ ያለው
-                  _receiptRow('የግብር ዘርፍ:', data['group'] ?? 'N/A'),
-                  _receiptRow('የክፍያ ዘመን:', data['period'] ?? 'N/A'),
-                  _receiptRow('የክፍያ ዘዴ:', data['method'] ?? 'Cash'),
+                        _receiptRow('የግብር ከፋይ ስም:', name, isBold: true),
+                        _receiptRow('የቲን (TIN) ቁጥር:', tin, isBold: true),
+                        const Divider(),
+                        _receiptRow('የግብር ዘርፍ:', group),
+                        _receiptRow('የክፍያ ዘመን:', period),
+                        _receiptRow('የክፍያ ዘዴ:', method),
+                        _receiptRow('ሰብሳቢ (Agent):', agent),
 
-                  const Divider(height: 25),
+                        const SizedBox(height: 20),
+                        _buildAmountBox(amount),
 
-                  // የገንዘብ መጠን (ጎላ ብሎ እንዲታይ)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'የተከፈለ መጠን:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                        const SizedBox(height: 30),
+
+                        Center(
+                          child: Column(
+                            children: [
+                              QrImageView(
+                                data: qrData,
+                                size: 180,
+                              ), // መረጃው ስለበዛ መጠኑን ጨምሬዋለሁ
+                              const SizedBox(height: 10),
+                              Text(
+                                'ደረሰኝ ቁጥር: $receiptNo',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${data['amount']} ብር',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 22,
-                          color: Colors.green[800],
+
+                        const SizedBox(height: 20),
+                        const Center(
+                          child: Text(
+                            'ይህ ደረሰኝ በሲስተም የተዘጋጀ በመሆኑ ያለ ማህተም የጸና ነው::',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const Divider(height: 30),
-
-                  const Text(
-                    'የክፍያ ማረጋገጫ QR Code',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // 3. QR Code
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[200]!),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: QrImageView(
-                      data: qrData,
-                      version: QrVersions.auto,
-                      size: 160.0,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-                  Text(
-                    'ደረሰኝ ቁጥር: BD-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                      letterSpacing: 1,
+                      ],
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 25),
-
-            // መመለሻ ቁልፍ
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.print),
-                label: const Text(
-                  'ይህንን ደረሰኝ አትም (Print)',
-                  style: TextStyle(fontSize: 16),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[800],
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
               ),
             ),
           ],
@@ -159,25 +143,99 @@ class ReceiptPage extends StatelessWidget {
     );
   }
 
-  // Helper Widget
-  Widget _receiptRow(String label, String value) {
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(12),
+          topLeft: Radius.circular(12),
+        ),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'የአማራ ብሔራዊ ክልላዊ መንግሥት',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          Text(
+            'የባህር ዳር ከተማ አስተዳደር ገቢዎች ጽ/ቤት',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: Colors.green[900],
+            ),
+          ),
+          const Divider(color: Colors.green, thickness: 2),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaidBadge() {
+    return Align(
+      alignment: Alignment.topRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.green, width: 2),
+        ),
+        child: const Text(
+          'ተከፍሏል / PAID',
+          style: TextStyle(
+            color: Colors.green,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAmountBox(String amount) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'ጠቅላላ ክፍያ (Total):',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            '$amount ETB',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _receiptRow(String label, String value, {bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[700], fontSize: 14)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             ),
           ),
         ],

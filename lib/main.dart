@@ -1,13 +1,12 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb; // አዲስ የተጨመረ
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'agent_page.dart';
 import 'admin_dashboard.dart';
 import 'tax_payer_page.dart';
 import 'login_page.dart';
+import 'firebase_options.dart';
+import 'dart:io';
 
-// 1. የቴሌብር ክፍያ እንዲሰራ (ለሞባይል ብቻ)
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -19,23 +18,9 @@ class MyHttpOverrides extends HttpOverrides {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // በWeb ላይ ከሆነ HttpOverrides አያስፈልግም (ስህተት እንዳይመጣ)
-  if (!kIsWeb) {
-    HttpOverrides.global = MyHttpOverrides();
-  }
-
-  // 2. የFirebase ኮንፊገሬሽን (የሰጠኸኝን መረጃ እዚህ አስገብቼዋለሁ)
+  HttpOverrides.global = MyHttpOverrides();
   await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "AIzaSyC2tdrXOp5xDDRXUwKXp1q21rZ5nNAOZUM",
-      authDomain: "bahirdar-smart-tax.firebaseapp.com",
-      projectId: "bahirdar-smart-tax",
-      storageBucket: "bahirdar-smart-tax.firebasestorage.app",
-      messagingSenderId: "1021409884080",
-      appId: "1:1021409884080:web:76bd7fef20475719d84875",
-      measurementId: "G-3XHP4T0ZC3",
-    ),
+    options: DefaultFirebaseOptions.currentPlatform,
   );
 
   runApp(const BahirDarSmartTaxApp());
@@ -54,7 +39,6 @@ class BahirDarSmartTaxApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.grey[100],
         useMaterial3: true,
       ),
-      // 2. አፑ ሲከፈት መጀመሪያ ምርጫ (Selection) እንዲመጣ
       initialRoute: '/selection',
       routes: {
         '/selection': (context) => const UserSelectionScreen(),
@@ -67,9 +51,6 @@ class BahirDarSmartTaxApp extends StatelessWidget {
   }
 }
 
-// -------------------------------------------------------------------
-// የተጠቃሚ መምረጫ ገጽ (Role Selection)
-// -------------------------------------------------------------------
 class UserSelectionScreen extends StatelessWidget {
   const UserSelectionScreen({super.key});
 
@@ -83,15 +64,13 @@ class UserSelectionScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 1. ኦፊሴላዊ ምልክት (Logo Icon)
                 const Icon(
                   Icons.account_balance,
                   size: 80,
-                  color: Color(0xFF1E3C72), // ከ Login Header ጋር የሚመሳሰል ከለር
+                  color: Color(0xFF1E3C72),
                 ),
                 const SizedBox(height: 20),
 
-                // 2. የአስተዳደሩ ስም (አማርኛ ከላይ - እንግሊዝኛ ከታች)
                 const Text(
                   'የባህር ዳር ከተማ ገቢዎች አስተዳደር',
                   textAlign: TextAlign.center,
@@ -101,20 +80,19 @@ class UserSelectionScreen extends StatelessWidget {
                     color: Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 4), // በሁለቱ መካከለኛ ትንሽ ክፍተት
+                const SizedBox(height: 4), 
                 const Text(
                   'BAHIR DAR CITY REVENUE ADMINISTRATION',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.normal, // Normal font እንዲሆን
+                    fontWeight: FontWeight.normal, 
                     color: Colors.grey,
                     letterSpacing: 1.2,
                   ),
                 ),
 
-                const SizedBox(height: 50), // ከምርጫዎቹ በፊት ያለው ክፍተት
-                // 3. ምርጫዎች (Role Cards) - እነዚህ እንዳሉ ይቀጥላሉ
+                const SizedBox(height: 50),
                 _buildRoleCard(
                   context,
                   title: 'ግብር ከፋይ (Tax Payer)',
@@ -162,8 +140,6 @@ class UserSelectionScreen extends StatelessWidget {
       ),
     );
   }
-
-  // _buildRoleCard ሜተድህ እዚህ ይቀጥላል...
 
   Widget _buildRoleCard(
     BuildContext context, {

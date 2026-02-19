@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'receipt_page.dart';
 import 'telebirr_service.dart';
 import 'package:flutter/services.dart';
-import 'widgets/custom_app_bar.dart'; // 1. አዲሱን Import እዚህ ጨምሬያለሁ
+import 'widgets/custom_app_bar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AgentPaymentPage extends StatefulWidget {
   const AgentPaymentPage({super.key});
@@ -61,7 +62,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      // 2. የድሮው AppBar ተወግዶ በ CustomAppBar ተተክቷል
       appBar: const CustomAppBar(pageTitle: "የግብር መቀበያ (Agent)"),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -82,12 +82,11 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E3C72), // ከዲዛይኑ ጋር እንዲሄድ ወደ ሰማያዊ ቀይሬዋለሁ
+                      color: Color(0xFF1E3C72),
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
-
                   _buildTextField(
                     _tinController,
                     'የTIN ቁጥር',
@@ -108,23 +107,19 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                     Icons.phone,
                     TextInputType.phone,
                   ),
-
                   const Divider(height: 30, thickness: 1),
-
                   _buildDropdown(
                     'የግብር ዘርፍ (Tax Group)',
                     _selectedTaxGroup,
                     _taxGroups,
                     (val) => setState(() => _selectedTaxGroup = val!),
                   ),
-
                   _buildDropdown(
                     'የክፍያ ዘመን (Period)',
                     _selectedPeriod,
                     _taxPeriods,
                     (val) => setState(() => _selectedPeriod = val!),
                   ),
-
                   _buildDropdown(
                     'የክፍያ ዘዴ',
                     _selectedPaymentKey,
@@ -132,7 +127,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                     (val) => setState(() => _selectedPaymentKey = val!),
                     isPaymentMethod: true,
                   ),
-
                   _buildTextField(
                     _amountController,
                     'የገንዘብ መጠን (ብር)',
@@ -140,13 +134,10 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                     TextInputType.number,
                   ),
                   const SizedBox(height: 30),
-
                   ElevatedButton.icon(
                     icon: const Icon(Icons.check_circle),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(
-                        0xFF1E3C72,
-                      ), // Button color matching AppBar
+                      backgroundColor: const Color(0xFF1E3C72),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
@@ -172,7 +163,6 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
     );
   }
 
-  // --- የተቀሩት ሎጂኮች (submitData, buildTextField, buildDropdown) ምንም አልተለወጡም ---
   void _submitData() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedPaymentKey == 'telebirr') {
@@ -231,7 +221,15 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
 
         if (!mounted) return;
 
-        Navigator.push(
+        String currentAgent = 'ያልታወቀ ኤጀንት';
+        final user = FirebaseAuth.instance.currentUser;
+
+        if (user != null) {
+          currentAgent = user.displayName ?? user.email ?? 'ኤጀንት';
+        }
+
+        // SOLUTION: Wait for the ReceiptPage to be closed before continuing.
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ReceiptPage(
@@ -243,16 +241,19 @@ class _AgentPaymentPageState extends State<AgentPaymentPage> {
                 'period': _selectedPeriod,
                 'amount': _amountController.text,
                 'method': _paymentOptions[_selectedPaymentKey]!,
+                'agentName': currentAgent,
                 'date': DateTime.now().toString(),
               },
             ),
           ),
         );
 
+        // This code now runs only AFTER the user returns from the receipt page.
         _nameController.clear();
         _tinController.clear();
         _phoneController.clear();
         _amountController.clear();
+
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

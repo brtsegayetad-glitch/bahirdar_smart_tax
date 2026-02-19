@@ -90,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 15),
                 Text(
-                  "የባህር ዳር ከተማ ገቢዎች አስተዳደር",
+                  "የባህር ዳር ከተማ አስተዳደር ገቢወች ጽ/ቤት",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,
@@ -108,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "BAHIR DAR CITY REVENUE ADMINISTRATION",
+                  "BAHIR DAR CITY ADMINISTRATION REVENUE OFFICE",
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.white.withOpacity(0.6),

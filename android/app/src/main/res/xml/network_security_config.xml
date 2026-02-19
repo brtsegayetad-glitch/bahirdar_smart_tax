@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Base configuration for production builds -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Configuration for debug builds -->
+    <debug-overrides>
+        <base-config cleartextTrafficPermitted="true">
+            <trust-anchors>
+                <!-- Trust system and user-added certificates -->
+                <certificates src="system" />
+                <certificates src="user" />
+            </trust-anchors>
+        </base-config>
+    </debug-overrides>
+
+    <!-- Allow traffic to the Telebirr sandbox IP -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">196.188.120.3</domain>
+    </domain-config>
+</network-security-config>
