@@ -7,8 +7,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-// Web-specific import
-import 'web_download_web.dart';
+// ይህ መስመር ብቻ ይበቃል! እሱ ራሱ ዌብ መሆን አለመሆኑን ለይቶ ይመርጣል
+import 'web_download_stub.dart' if (dart.library.html) 'web_download_web.dart';
+
+// እዚህ ጋር የነበረውን import 'web_download_web.dart'; አጥፋው! <---
 
 // Widgets Folder Imports
 import 'widgets/custom_app_bar.dart';
