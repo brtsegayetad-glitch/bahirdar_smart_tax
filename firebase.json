@@ -24,7 +24,11 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/*.exe",
+      "**/*.bin",
+      "**/*.sh",
+      "**/web_download_*" 
     ],
     "rewrites": [
       {
